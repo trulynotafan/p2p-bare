@@ -24,14 +24,14 @@ e.g `bare peer.js afaan`
 ```
 Now for Second peer:
 `bare peer.js (any-other-name)` 
-e.g `bare peer.js bob`
+e.g `bare peer.js amy`
 ``` 
 [amy] start
 [amy] { peerkey: 'c7b6137b94e4744c22c793e8837b27106331474f1632e6e02c460addc71a0a6c' }
 [amy] { corekey: 'b25908d7d9ef769aed13cf6ac76ce8fc5e36898e61b57750765cc54a99a7147c' }
 [amy] ≡ ✅ {
   type: 'uptime',
-  peer: 'bob',
+  peer: 'amy',
   data: { '0': 7382, '1': 768024700 },
   stamp: '0h:0m:6s'
 }
@@ -46,7 +46,7 @@ Now both peers will connect:
 [afaan] ≡ ✅ Reading previous entries from peer c7b6137b...
 [afaan] ≡ ✅ {
   type: 'uptime',
-  peer: 'bob',
+  peer: 'amy',
   data: { '0': 7388, '1': 774223800 },
   stamp: '0h:0m:12s'
 }
