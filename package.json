@@ -13,7 +13,8 @@
     "hypercore-crypto": "^3.5.0",
     "hyperswarm": "^4.10.1",
     "protomux": "^3.10.1",
-    "sodium-universal": "^4.0.1"
+    "sodium-universal": "^4.0.1",
+    "bip39-mnemonic": "2.2.0"
   },
   "license": "MIT"
 }
