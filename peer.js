@@ -50,19 +50,15 @@ async function start (iid) {
   const keyPair = { publicKey, secretKey }
   const store = new Corestore(`./storage-${name}`)
   const swarm = new Hyperswarm({ keyPair })
-  const core = store.get({ name: 'test-core' })
-  await core.ready()
   swarm.on('connection', onconnection)
+  const core = store.get({ name: 'test-core' })
   core.on('append', onappend)
+  await core.ready()
   console.log(label, { corekey: core.key.toString('hex') })
   const discovery = swarm.join(topic, { server: true, client: true })
   await discovery.flushed()
-  
-
- 
   iid = setInterval(append_more, 3000)
-
-  
+    
   setInterval(() => {
     console.log(label, `👥 Connected peers: ${swarm.connections.size}`)
   }, 10000)
@@ -112,6 +108,18 @@ async function start (iid) {
            
             console.log(label, `📖 Received book key from peer ${peerName}:`, peerBookKey)
             const remoteCore = store.get(b4a.from(peerBookKey, 'hex'))
+
+            remoteCore.on('append', async () => {
+              const lastBlock = remoteCore.length - 1
+              try {
+                const data = await remoteCore.get(lastBlock)
+                const entry = JSON.parse(data.toString())
+                console.log(label, '📬', entry)
+              } catch (err) {
+                console.log(label, '❌', err)
+              }
+            })
+
             await remoteCore.ready()
             
             // A bit changed version of your existing code to download all old entries first
@@ -127,16 +135,7 @@ async function start (iid) {
             }
             
             // Subscribing to new updates
-            remoteCore.on('append', async () => {
-              const lastBlock = remoteCore.length - 1
-              try {
-                const data = await remoteCore.get(lastBlock)
-                const entry = JSON.parse(data.toString())
-                console.log(label, '📬', entry)
-              } catch (err) {
-                console.log(label, '❌', err)
-              }
-            })
+           
           }
         })
 
