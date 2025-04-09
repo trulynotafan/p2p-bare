@@ -7,10 +7,11 @@ const process = require("bare-process")
 const Protomux = require('protomux')
 const c = require('compact-encoding')
 const Hypercore = require('hypercore')
+const { generateMnemonic, mnemonicToSeed } = require('bip39-mnemonic')
+const fs = require('bare-fs/promises')
 
 
 const topic_hex = 'ffb09601562034ee8394ab609322173b641ded168059d256f6a3d959b2dc6021'
-                                                                                     
 const topic = b4a.from(topic_hex, 'hex')
 
 /******************************************************************************
@@ -25,9 +26,23 @@ async function start (iid) {
   const startTime = process.hrtime()
   console.log(label, 'start')
 
+  // Check if mnemonic exists, if not generate new one
+  let mnemonic
+  try {
+    mnemonic = await fs.readFile(`mnemonic-${name}.txt`, 'utf-8')
+    console.log(label, '📝 Using existing mnemonic')
+  } catch (err) {
+    mnemonic = generateMnemonic()
+    await fs.writeFile(`mnemonic-${name}.txt`, mnemonic)
+    console.log(label, '📝 Generated new mnemonic')
+  }
+
+  const seed = await mnemonicToSeed(mnemonic)
+  const seed32 = seed.slice(0, 32) //keypair generation expects 32 bytes
+
   const opts = {
     namespace: 'noisekeys',
-    seed: crypto.randomBytes(32),
+    seed: seed32,
     name: 'noise'
   }
   const { publicKey, secretKey } = create_noise_keypair(opts)
@@ -37,11 +52,12 @@ async function start (iid) {
   const swarm = new Hyperswarm({ keyPair })
   const core = store.get({ name: 'test-core' })
   await core.ready()
+  swarm.on('connection', onconnection)
+  core.on('append', onappend)
   console.log(label, { corekey: core.key.toString('hex') })
   const discovery = swarm.join(topic, { server: true, client: true })
   await discovery.flushed()
-  swarm.on('connection', onconnection)
-  core.on('append', onappend)
+  
 
  
   iid = setInterval(append_more, 3000)
@@ -131,7 +147,7 @@ async function start (iid) {
     })
   }
 
-  function onappend () {
+ async function onappend () {
     const L = core.length
     core.get(L - 1).then(data => {
       const entry = JSON.parse(data.toString())
@@ -140,6 +156,8 @@ async function start (iid) {
   }
 
 }
+
+
 
 /******************************************************************************
   HELPER
