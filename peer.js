@@ -57,7 +57,7 @@ async function start (iid) {
   console.log(label, { corekey: core.key.toString('hex') })
   const discovery = swarm.join(topic, { server: true, client: true })
   await discovery.flushed()
-  iid = setInterval(append_more, 3000)
+  iid = setInterval(append_more, 1000)
     
   setInterval(() => {
     console.log(label, `👥 Connected peers: ${swarm.connections.size}`)
@@ -105,37 +105,50 @@ async function start (iid) {
         const message = channel.addMessage({ 
           encoding: c.string, 
           onmessage: async (peerBookKey) => {
-           
             console.log(label, `📖 Received book key from peer ${peerName}:`, peerBookKey)
-            const remoteCore = store.get(b4a.from(peerBookKey, 'hex'))
-
-            remoteCore.on('append', async () => {
-              const lastBlock = remoteCore.length - 1
-              try {
-                const data = await remoteCore.get(lastBlock)
-                const entry = JSON.parse(data.toString())
-                console.log(label, '📬', entry)
-              } catch (err) {
-                console.log(label, '❌', err)
-              }
-            })
-
-            await remoteCore.ready()
             
-            // A bit changed version of your existing code to download all old entries first
-            console.log(label, `📚 Reading previous entries from peer ${peerName}...`)
-            for (let i = 0; i < remoteCore.length; i++) {
-              try {
-                const data = await remoteCore.get(i)
-                const entry = JSON.parse(data.toString())
-                console.log(label, '📚', entry)
-              } catch (err) {
-                console.log(label, '❌', err)
+            try {
+              // Get peer's core using their book key
+              const peerCore = store.get(b4a.from(peerBookKey, 'hex'))
+              
+              // Wait for core to be ready
+              await peerCore.ready()
+              
+              // Set up replication for this specific core
+              peerCore.replicate(replicationStream)
+              
+              // Wait for replication to catch up
+              await new Promise(resolve => setTimeout(resolve, 1000))
+              
+              // Read all existing entries first
+              console.log(label, `📚 Reading previous entries from peer ${peerName}...`)
+              const length = peerCore.length
+              console.log(label, `Found ${length} previous entries from peer ${peerName}`)
+              
+              for (let i = 0; i < length; i++) {
+                try {
+                  const data = await peerCore.get(i)
+                  const entry = JSON.parse(data.toString())
+                  console.log(label, '📚', entry)
+                } catch (err) {
+                  console.log(label, '❌ Error reading entry:', err)
+                }
               }
+
+              // Then subscribe to new updates
+              peerCore.on('append', async () => {
+                const lastBlock = peerCore.length - 1
+                try {
+                  const data = await peerCore.get(lastBlock)
+                  const entry = JSON.parse(data.toString())
+                  console.log(label, '📬', entry)
+                } catch (err) {
+                  console.log(label, '❌ Error reading new entry:', err)
+                }
+              })
+            } catch (err) {
+              console.log(label, '❌ Error setting up peer core:', err)
             }
-            
-            // Subscribing to new updates
-           
           }
         })
 
